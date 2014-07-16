@@ -1,4 +1,4 @@
-*/config/development
+*/config/*
 */logs/log-*.php
 */logs/!index.html
 */cache/*
@@ -12,7 +12,12 @@
 */models/*
 */modules/*
 */third_party/*
+*/controllers/*
 */views/*
-*/system/*
-*/user_guide/*
+application/libraries/index.html
+application/index.html
+application/logs/index.html
+system/*
+user_guide/*
 index.php
+.htaccess
