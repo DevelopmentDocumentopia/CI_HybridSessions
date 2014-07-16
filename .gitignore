@@ -4,3 +4,15 @@
 */cache/*
 */cache/!index.html
 */cache/!.htaccess
+*/core/*
+*/errors/*
+*/helpers/*
+*/hooks/*
+*/language/*
+*/models/*
+*/modules/*
+*/third_party/*
+*/views/*
+*/system/*
+*/user_guide/*
+index.php
