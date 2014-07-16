@@ -6,7 +6,7 @@ Allows the use of both Native PHP sessions and the Stock CI Session Library with
 ---
 We at Documentopia usually prefer to use native PHP sessions for a number of reasons, the biggest being that they work out of the box everywhere and with almost every browser.   For a number of years we have been utilizing the CI Native Sessions library by Dariusz Debowczyk with some improvements of our own.
 
-Few of the downsides, I think, of the Cookie based method are:
+A few of the downsides, I think, of the Cookie based method are:
 
     Data is controlled by the user (even if it is encrypted)
     Size of the cookies being past back and forth
