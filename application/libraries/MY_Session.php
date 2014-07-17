@@ -47,10 +47,11 @@ class MY_Session extends CI_Session {
     var $sess_match_useragent = TRUE;
     var $encryption_key = '';
     var $sess_encrypt_cookie = FALSE;
-    var $cookie_keys = array();
-    var $always_cookie = FALSE;
-    var $user_agent_trim = 120;
-    var $alt_session_started = FALSE;
+    var $cookie_keys = array(); // WHICH KEYS ARE GOING INTO the CI Sessions
+    var $always_cookie = FALSE; // ALWAYS BACKUP NATIVE WITH CI 
+    var $user_agent_trim = 120; // HOW MUCH OF THE USER_AGENT String is used
+    var $alt_session_started = FALSE; // ONLY START THE ALT SESSION ONCE
+    var $always_start_alt = TRUE; // IF YOUR SESSION CODE IS MIXED UP WITH STUFF THAT OUTPUTS YOU NEED TO START THE SESSION AT THE TOP
     var $params = null;
     
     
@@ -78,8 +79,12 @@ class MY_Session extends CI_Session {
         log_message('debug', "Hybrid_session Class Initialized");
         
         $this->_sess_run();
+        
+        
+        
         $this->params=$params;
         
+        if ($this->always_start_alt==true) $this->_check_alt_session(true); // Do this if your userdata statements are mixed with output
         
         
     }
@@ -91,6 +96,7 @@ class MY_Session extends CI_Session {
         if ($item==null) $start_session = true; // If we don't know the key start the cookie session
         else if ($this->always_cookie==true) $start_session = true; // If we are always cookie start the session
         else if (in_array($item, $this->cookie_keys)) $start_session = true; // If this is a key we are cookieing
+        else if ($item===true) $start_session = true;
         
     
         if ($this->alt_session_started==false && $start_session==true) {
