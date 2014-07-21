@@ -47,8 +47,9 @@ class MY_Session extends CI_Session {
     var $sess_match_useragent = TRUE;
     var $encryption_key = '';
     var $sess_encrypt_cookie = FALSE;
+    var $sess_expiration = 7200;
     var $cookie_keys = array(); // WHICH KEYS ARE GOING INTO the CI Sessions
-    var $always_cookie = FALSE; // ALWAYS BACKUP NATIVE WITH CI 
+    var $always_cookie = FALSE; // ALWAYS BACKUP NATIVE WITH CI
     var $user_agent_trim = 120; // HOW MUCH OF THE USER_AGENT String is used
     var $alt_session_started = FALSE; // ONLY START THE ALT SESSION ONCE
     var $always_start_alt = TRUE; // IF YOUR SESSION CODE IS MIXED UP WITH STUFF THAT OUTPUTS YOU NEED TO START THE SESSION AT THE TOP
@@ -63,7 +64,7 @@ class MY_Session extends CI_Session {
         // Set all the session preferences, which can either be set
         // manually via the $params array above or via the config file
         
-        foreach(array('sess_match_ip', 'sess_match_useragent', 'encryption_key', 'sess_encrypt_cookie', 'cookie_keys', 'always_cookie') as $key) {
+        foreach(array('sess_match_ip', 'sess_match_useragent', 'encryption_key', 'sess_encrypt_cookie', 'cookie_keys', 'always_cookie', 'sess_expiration') as $key) {
             $this->$key = (isset($params[$key])) ? $params[$key] : $this->CI->config->item($key);
             $params[$key] = $this->$key;
         }
@@ -82,26 +83,52 @@ class MY_Session extends CI_Session {
         
         
         
-        $this->params=$params;
+        $this->params = $params;
         
-        if ($this->always_start_alt==true) $this->_check_alt_session(true); // Do this if your userdata statements are mixed with output
+        if ($this->always_start_alt == true) $this->_check_alt_session(true); // Do this if your userdata statements are mixed with output
         
         
     }
     
     // See if we should start the ALT session handler, we don't want to start it if we don't need to because of the overhead
-    function _check_alt_session($item=null) {
+    function _check_alt_session($item = null) {
         // We get the item or key to prevent starting a session if there is no cookie
-        $start_session = false;
-        if ($item==null) $start_session = true; // If we don't know the key start the cookie session
-        else if ($this->always_cookie==true) $start_session = true; // If we are always cookie start the session
-        else if (in_array($item, $this->cookie_keys)) $start_session = true; // If this is a key we are cookieing
-        else if ($item===true) $start_session = true;
         
-    
-        if ($this->alt_session_started==false && $start_session==true) {
+        if (!isset($params['sess_expiration'])) {
+            $this->params['sess_expiration'] = (60 * 60 * 24 * 365); // One Year from now - Year 2038 problem - Hopefully fixed by then ?
+            
+        }
+        
+        
+        if ($item === true && $this->alt_session_started == false) {
+            $this->alt_session_started = true; // Don't start it twice
+            parent::__construct($this->params);
+            return;
+        }
+        
+        // Code below needs to be rethought
+        
+        // This is lazy session starting, which may cause problems depending on how your output code works
+        
+        
+        $start_session = false;
+        if ($item == null) $start_session = true; // If we don't know the key start the cookie session
+        else if ($this->always_cookie == true) $start_session = true; // If we are always cookie start the session
+        else if (in_array($item, $this->cookie_keys)) $start_session = true; // If this is a key we are cookieing
+        
+        
+        
+        if (headers_sent()) {
+            log_message('debug', "Hybrid_session unable to start because headers already sent");
+            $start_session = false; // We can't send headers
+        }
+        
+        
+        if ($this->alt_session_started == false && $start_session == true) {
             $this->alt_session_started = true; // Don't start it twice
             // Call the CI Library Construct to start
+            
+            // For our purposes make the cookie long lived
             parent::__construct($this->params);
         }
     }
@@ -140,8 +167,7 @@ class MY_Session extends CI_Session {
         session_write_close();
     }
     
-    function sess_destroy() 
-    {
+    function sess_destroy() {
         $this->destroy();
     }
     /**
@@ -164,12 +190,12 @@ class MY_Session extends CI_Session {
      * Reads given session attribute value
      */
     function userdata($item) {
-    
+        
         // Cookies take priority
         if ($this->always_cookie == true) {
             $this->_check_alt_session($item);
-            $ret=(parent::userdata($item));
-            if ($ret!==false) return($ret);
+            $ret = (parent::userdata($item));
+            if ($ret !== false) return ($ret);
         }
         
         // Does the User Agent Match?
@@ -191,9 +217,9 @@ class MY_Session extends CI_Session {
             if ($ret == false) {
                 $this->_check_alt_session($item);
                 // Try Cookie
-                $ret=(parent::userdata($item));
+                $ret = (parent::userdata($item));
             }
-        
+            
             return ($ret);
         }
     }
