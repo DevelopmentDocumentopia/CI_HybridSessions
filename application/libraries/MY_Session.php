@@ -46,7 +46,7 @@ class MY_Session extends CI_Session {
     var $sess_match_ip = FALSE;
     var $sess_match_useragent = TRUE;
     var $encryption_key = '';
-    var $sess_encrypt_cookie = TRUE;
+    var $sess_encrypt_cookie = FALSE;
     var $sess_expiration = 7200;
     var $cookie_keys = array(); // WHICH KEYS ARE GOING INTO the CI Sessions
     var $user_agent_trim = 120; // HOW MUCH OF THE USER_AGENT String is used
@@ -63,10 +63,18 @@ class MY_Session extends CI_Session {
         // Set all the session preferences, which can either be set
         // manually via the $params array above or via the config file
         
+        // Load from either passed params, config file or our class defaults (and load them into params to pass on to the native ci sessions
         foreach(array('sess_match_ip', 'sess_match_useragent', 'encryption_key', 'sess_encrypt_cookie', 'cookie_keys', 'always_start_cookie_session', 'sess_expiration') as $key) {
-            $this->$key = (isset($params[$key])) ? $params[$key] : $this->CI->config->item($key);
+            if (isset($params[$key])) {
+                $this->$key = (isset($params[$key]));
+            } elseif ($this->CI->config->item($key) != null) {
+                $this->$key = $this->CI->config->item($key);
+                $params[$key] = $this->$key;
+                
+            }
             $params[$key] = $this->$key;
         }
+        
         
         // Force a encryption key if none set, just use the hostname for now - FIX ME XXX
         if ($this->encryption_key == "") {
@@ -120,6 +128,7 @@ class MY_Session extends CI_Session {
         if (headers_sent()) {
             log_message('debug', "Hybrid_session unable to start because headers already sent");
             $start_session = false; // We can't send headers
+            
         }
         
         
