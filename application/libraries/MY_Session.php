@@ -49,6 +49,7 @@ class MY_Session extends CI_Session {
     var $sess_encrypt_cookie = FALSE;
     var $sess_expiration = 7200;
     var $cookie_keys = array(); // WHICH KEYS ARE GOING INTO the CI Sessions
+    var $always_use_cookie = FALSE;
     var $user_agent_trim = 120; // HOW MUCH OF THE USER_AGENT String is used
     var $cookie_session_started = FALSE; // ONLY START THE COOKIE SESSION ONCE
     var $always_start_cookie_session = TRUE; // IF YOUR SESSION CODE IS MIXED UP WITH STUFF THAT OUTPUTS YOU NEED TO START THE SESSION AT THE TOP
@@ -59,20 +60,20 @@ class MY_Session extends CI_Session {
         
         $this->CI = & get_instance();
         
-        
         // Set all the session preferences, which can either be set
         // manually via the $params array above or via the config file
         
         // Load from either passed params, config file or our class defaults (and load them into params to pass on to the native ci sessions
         foreach(array('sess_match_ip', 'sess_match_useragent', 'encryption_key', 'sess_encrypt_cookie', 'cookie_keys', 'always_start_cookie_session', 'sess_expiration') as $key) {
             if (isset($params[$key])) {
-                $this->$key = (isset($params[$key]));
+                $this->$key = $params[$key];
             } elseif ($this->CI->config->item($key) != null) {
                 $this->$key = $this->CI->config->item($key);
                 $params[$key] = $this->$key;
                 
+            } else {
+                $params[$key] = $this->$key;
             }
-            $params[$key] = $this->$key;
         }
         
         
@@ -99,7 +100,12 @@ class MY_Session extends CI_Session {
     
     // See if we should start the COOKIE session handler, we don't want to start it if we don't need to because of the overhead
     function _start_cookie_sessions($item = null) {
-        // We get the item or key to prevent starting a session if there is no cookie
+        // If there are no keys and we are not in a always start mode, never start so this can be a drop in replacement to our current MY_SESSION
+        
+        if (empty($this->cookie_keys) && $this->always_use_cookie==false) {
+            return; // SKIP STARTING
+        }
+        
         
         if (!isset($params['sess_expiration'])) {
             $this->params['sess_expiration'] = (60 * 60 * 24 * 365); // One Year from now - Year 2038 problem - Hopefully fixed by then ?
@@ -120,7 +126,7 @@ class MY_Session extends CI_Session {
         
         $start_session = false;
         if ($item == null) $start_session = true; // If we don't know the key start the cookie session
-        else if ($this->always_cookie == true) $start_session = true; // If we are always cookie start the session
+        else if ($this->always_use_cookie == true) $start_session = true; // If we are always cookie start the session
         else if (in_array($item, $this->cookie_keys)) $start_session = true; // If this is a key we are cookieing
         
         
@@ -200,7 +206,7 @@ class MY_Session extends CI_Session {
     function userdata($item) {
         
         // Cookies take priority
-        if ($this->always_cookie == true) {
+        if ($this->always_use_cookie == true) {
             $this->_start_cookie_sessions($item);
             $ret = (parent::userdata($item));
             if ($ret !== false) return ($ret);
@@ -238,7 +244,9 @@ class MY_Session extends CI_Session {
     // Mostly for debugging to see what is stored native and what is stored CI session wise.
     function all_cookie_userdata() {
         $this->_start_cookie_sessions();
-        return (parent::all_userdata());
+        if ($this->cookie_session_started == true) {
+            return (parent::all_userdata());
+        } else return (array());
     }
     
     
@@ -248,7 +256,7 @@ class MY_Session extends CI_Session {
     function set_userdata($newdata = array(), $newval = '') {
         
         // If we are always cookie based, set this first
-        if ($this->always_cookie == true) {
+        if ($this->always_use_cookie == true && $this->cookie_session_started == true) {
             parent::set_userdata($newdata, $newval);
         }
         
@@ -259,7 +267,8 @@ class MY_Session extends CI_Session {
         
         if (count($newdata) > 0) {
             foreach($newdata as $key => $val) {
-                if (in_array($key, $this->cookie_keys) && $this->always_cookie == false) { // If we are always cookie, it will be set above, otherwise just set the configred ones
+                
+                if (in_array($key, $this->cookie_keys) && $this->always_use_cookie == false) { // If we are always cookie, it will be set above, otherwise just set the configred ones
                     $this->_start_cookie_sessions($key);
                     parent::set_userdata($key, $val);
                 }
@@ -273,7 +282,7 @@ class MY_Session extends CI_Session {
      * Erases given session attributes
      */
     function unset_userdata($newdata = array()) {
-        if ($this->cookie_session_started) parent::unset_userdata($newdata);
+        if ($this->cookie_session_started && $this->cookie_session_started == true) parent::unset_userdata($newdata);
         
         if (is_string($newdata)) {
             $newdata = array($newdata => '');
